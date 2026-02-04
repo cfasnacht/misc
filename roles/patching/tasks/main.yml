@@ -1,0 +1,74 @@
+---
+
+- name: Display all hosts in the current execution
+  ansible.builtin.pause:
+    prompt: |
+      Hosts to be updated and rebooted:
+      {% for host in ansible_play_hosts %}
+        {{ host }}
+      {% endfor %}
+      Press Ctrl + C then A to Abort!
+  delegate_to: localhost
+  run_once: true
+
+- name: Get free root disk space
+  ansible.builtin.set_fact:
+    patching_free_root_space_gb: "{{ ((ansible_facts['mounts'] | selectattr('mount', 'equalto', '/') | first).size_available / 1024**3) }}"
+  check_mode: false
+
+- name: Write error to file
+  ansible.builtin.lineinfile:
+    path: "{{ patching_ansible_output_dir }}/{{ ansible_facts['hostname'] }}/disk_space_error"
+    line: >
+      "{{ now() }} Not enough disk space, at least {{ patching_minimal_disk_space_gb }} GB needed but only"
+      "{{ patching_free_root_space_gb | round(2) }} is available."
+    mode: "0644"
+    owner: "{{ lookup('env', 'USER') }}"
+    group: "{{ lookup('env', 'USER') }}"
+    create: true
+  become: false
+  delegate_to: localhost
+  when: patching_free_root_space_gb < patching_minimal_disk_space_gb
+
+- name: Check if enough disk space is available
+  ansible.builtin.fail:
+    msg: >
+      "Not enough disk space, at least {{ patching_minimal_disk_space_gb }} GB needed but only"
+      "{{ patching_free_root_space_gb | round(2) }} is available."
+  when: patching_free_root_space_gb < patching_minimal_disk_space_gb
+  check_mode: false
+
+- name: Get list of failed systemd units # noqa command-instead-of-module
+  ansible.builtin.command: systemctl list-units --state=failed
+  register: patching_failed_units
+  changed_when: false
+  check_mode: false
+
+- name: Write error to file
+  ansible.builtin.lineinfile:
+    path: "{{ patching_ansible_output_dir }}/{{ ansible_facts['hostname'] }}/failed_systemd_units"
+    line: "{{ now() }} {{ item }}"
+    mode: "0644"
+    owner: "{{ lookup('env', 'USER') }}"
+    group: "{{ lookup('env', 'USER') }}"
+    create: true
+  become: false
+  delegate_to: localhost
+  loop: "{{ patching_failed_units.stdout_lines | select('search', 'failed') | list }}"
+  when: patching_failed_units.stdout is not search('0 loaded units listed')
+
+- name: Check if server has failed systemd units
+  ansible.builtin.fail:
+    msg: "Systemd unites failed: {{ patching_failed_units.stdout_lines | select('search', 'failed') | list }}"
+  when: patching_failed_units.stdout is not search('0 loaded units listed')
+  check_mode: false
+
+- name: Update packages
+  ansible.builtin.dnf:
+    name: "*"
+    state: latest # noqa package-latest
+  register: patching_dnf_update_result
+
+- name: Reboot server
+  ansible.builtin.reboot:
+  when: patching_reboot | bool

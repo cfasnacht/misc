@@ -1,0 +1,7 @@
+---
+- name: Patch and reboot server if there are no error found
+  hosts: te*
+  gather_facts: true
+  become: true
+  roles:
+    - role: patching
