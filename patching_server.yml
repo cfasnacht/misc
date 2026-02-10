@@ -1,4 +1,9 @@
 ---
+
+# usage:
+# ansible-playbook patching_server.yml --diff
+# ansible-playbook patching_server.yml --diff -e "patching_reboot=false"
+
 - name: Patch and reboot server if there are no error found
   hosts: te*
   gather_facts: true
