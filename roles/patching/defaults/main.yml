@@ -1,5 +1,5 @@
 ---
 
-patching_minimal_disk_space_gb: 5
+patching_minimal_disk_space_gb: 1
 patching_ansible_output_dir: ./ansible_patching_output
 patching_reboot: true

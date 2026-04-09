@@ -1,0 +1,21 @@
+---
+
+- name: Display all hosts in the current execution
+  ansible.builtin.pause:
+    prompt: |
+      Hosts to be updated and rebooted:
+      {% for host in hosts_to_patch %}
+        {{ host }}
+      {% endfor %}
+      Press Ctrl + C then A to Abort!
+  delegate_to: localhost
+  run_once: true
+
+- name: Patch and reboot server if there are no error found
+  hosts: "{{ hosts_to_patch | default('none') }}"
+  serial: 2
+  gather_facts: true
+  become: true
+  roles:
+    - role: patching
+

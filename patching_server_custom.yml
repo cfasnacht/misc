@@ -1,0 +1,32 @@
+---
+
+- name: Display all hosts in the current execution
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: List hosts
+      block:
+        - ansible.builtin.assert:
+            that: hosts_to_patch is defined
+            fail_msg: "hosts_to_patch must be a host list"
+        - ansible.builtin.set_fact:
+            hosts_to_patch_list: "{{ query('inventory_hostnames', hosts_to_patch) | list }}"
+        - debug:
+            msg: "{{ hosts_to_patch_list }}"
+        - ansible.builtin.pause:
+            prompt: |
+              Hosts to be updated and rebooted:
+              {% for host in hosts_to_patch_list %}
+                {{ host }}
+              {% endfor %}
+              Press Ctrl + C then A to Abort!
+      delegate_to: localhost
+      run_once: true
+
+- name: Patch and reboot server if there are no error found
+  hosts: "{{ hosts_to_patch }}"
+  gather_facts: true
+  become: true
+  roles:
+    - role: patching
+

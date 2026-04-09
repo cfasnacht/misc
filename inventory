@@ -1,2 +1,9 @@
 [test]
-rocky0test ansible_host=192.168.11.40
+rocky0test-vt0 ansible_host=192.168.11.40
+rocky0test-vt1 ansible_host=192.168.11.40
+rocky0test-vt2 ansible_host=192.168.11.40
+rocky0test-vt3 ansible_host=192.168.11.40
+
+[int]
+rocky0test-vi0 ansible_host=192.168.11.40
+rocky0test-vi1 ansible_host=192.168.11.40
